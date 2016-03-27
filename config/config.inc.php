@@ -9,11 +9,11 @@
  */
 if(version_compare(PHP_VERSION, '5.4.0', '<'))
 {
-	@error_reporting(E_ALL ^ E_NOTICE ^ E_DEPRECATED);
+	@error_reporting(E_ALL ^ E_NOTICE ^ E_DEPRECATED ^ E_WARNING);
 }
 else
 {
-	@error_reporting(E_ALL ^ E_NOTICE ^ E_DEPRECATED ^ E_STRICT);
+	@error_reporting(E_ALL ^ E_NOTICE ^ E_DEPRECATED ^ E_WARNING ^ E_STRICT);
 }
 
 if(!defined('__XE__'))
@@ -29,7 +29,11 @@ define('__ZBXE__', __XE__);
 /**
  * Display XE's full version.
  */
-define('__XE_VERSION__', '1.7.4');
+define('__XE_VERSION__', '1.7.8');
+define('__XE_VERSION_ALPHA__', (stripos(__XE_VERSION__, 'alpha') !== false));
+define('__XE_VERSION_BETA__', (stripos(__XE_VERSION__, 'beta') !== false));
+define('__XE_VERSION_RC__', (stripos(__XE_VERSION__, 'rc') !== false));
+define('__XE_VERSION_STABLE__', (!__XE_VERSION_ALPHA__ && !__XE_VERSION_BETA__ && !__XE_VERSION_RC__));
 
 /**
  * @deprecated __ZBXE_VERSION__ will be removed. Use __XE_VERSION__ instead.
@@ -83,6 +87,9 @@ else
  * define('__DEBUG_PROTECT_IP__', '127.0.0.1');
  * define('__DEBUG_DB_OUTPUT__', 0);
  * define('__LOG_SLOW_QUERY__', 0);
+ * define('__LOG_SLOW_TRIGGER__', 0);
+ * define('__LOG_SLOW_ADDON__', 0);
+ * define('__LOG_SLOW_WIDGET__', 0);
  * define('__OB_GZHANDLER_ENABLE__', 1);
  * define('__ENABLE_PHPUNIT_TEST__', 0);
  * define('__PROXY_SERVER__', 'http://domain:port/path');
@@ -163,10 +170,52 @@ if(!defined('__LOG_SLOW_QUERY__'))
 	 * <pre>
 	 * 0: Do not leave a log
 	 * = 0: leave a log when the slow query takes over specified seconds
-	 * Log file is saved as ./files/_db_slow_query.php file
+	 * Log file is saved as ./files/_slowlog_query.php file
 	 * </pre>
 	 */
 	define('__LOG_SLOW_QUERY__', 0);
+}
+
+if(!defined('__LOG_SLOW_TRIGGER__'))
+{
+	/**
+	 * Trigger excute time log
+	 *
+	 * <pre>
+	 * 0: Do not leave a log
+	 * > 0: leave a log when the trigger takes over specified milliseconds
+	 * Log file is saved as ./files/_slowlog_trigger.php
+	 * </pre>
+	 */
+	define('__LOG_SLOW_TRIGGER__', 0);
+}
+
+if(!defined('__LOG_SLOW_ADDON__'))
+{
+	/**
+	 * Addon excute time log
+	 *
+	 * <pre>
+	 * 0: Do not leave a log
+	 * > 0: leave a log when the trigger takes over specified milliseconds
+	 * Log file is saved as ./files/_slowlog_addon.php
+	 * </pre>
+	 */
+	define('__LOG_SLOW_ADDON__', 0);
+}
+
+if(!defined('__LOG_SLOW_WIDGET__'))
+{
+	/**
+	 * Widget excute time log
+	 *
+	 * <pre>
+	 * 0: Do not leave a log
+	 * > 0: leave a log when the widget takes over specified milliseconds
+	 * Log file is saved as ./files/_slowlog_widget.php
+	 * </pre>
+	 */
+	define('__LOG_SLOW_WIDGET__', 0);
 }
 
 if(!defined('__DEBUG_QUERY__'))
@@ -250,6 +299,7 @@ if(!defined('__XE_LOADED_CLASS__'))
 	require(_XE_PATH_ . 'classes/xml/XmlJsFilter.class.php');
 	require(_XE_PATH_ . 'classes/xml/XmlLangParser.class.php');
 	require(_XE_PATH_ . 'classes/cache/CacheHandler.class.php');
+	require(_XE_PATH_ . 'classes/router/Router.class.php');
 	require(_XE_PATH_ . 'classes/context/Context.class.php');
 	require(_XE_PATH_ . 'classes/db/DB.class.php');
 	require(_XE_PATH_ . 'classes/file/FileHandler.class.php');

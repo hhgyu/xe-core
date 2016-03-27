@@ -126,6 +126,8 @@ class DisplayHandler extends Handler
 
 		// call a trigger after display
 		ModuleHandler::triggerCall('display', 'after', $output);
+
+		flushSlowlog();
 	}
 
 	/**
@@ -164,12 +166,13 @@ class DisplayHandler extends Handler
 						array(
 							'Request / Response info >>> ' . $_SERVER['REQUEST_METHOD'] . ' / ' . Context::getResponseMethod(),
 							array(
-								array('Request URI', 'Request method', 'Response method', 'Response contents size'),
+								array('Request URI', 'Request method', 'Response method', 'Response contents size', 'Memory peak usage'),
 								array(
 									sprintf("%s:%s%s%s%s", $_SERVER['SERVER_NAME'], $_SERVER['SERVER_PORT'], $_SERVER['PHP_SELF'], $_SERVER['QUERY_STRING'] ? '?' : '', $_SERVER['QUERY_STRING']),
 									$_SERVER['REQUEST_METHOD'],
 									Context::getResponseMethod(),
-									$this->content_size . ' byte'
+									$this->content_size . ' byte',
+									FileHandler::filesize(memory_get_peak_usage())
 								)
 							)
 						),
@@ -291,7 +294,7 @@ class DisplayHandler extends Handler
 					$buff = 'The IP address is not allowed. Change the value of __DEBUG_PROTECT_IP__ into your IP address in config/config.user.inc.php or config/config.inc.php';
 				}
 
-				return "<!--\r\n" . implode("\r\n", $buff) . "\r\n-->";
+				return "<!--\r\n" . $buff . "\r\n-->";
 			}
 
 			// Output to a file

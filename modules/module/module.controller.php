@@ -402,7 +402,7 @@ class moduleController extends module
 		}
 		else
 		{
-			if(isset($args->is_skin_fix))
+			if(isset($args->is_mskin_fix))
 			{
 				$args->is_mskin_fix = ($args->is_mskin_fix != 'Y') ? 'N' : 'Y';
 			}
@@ -1015,6 +1015,8 @@ class moduleController extends module
 
 		foreach($obj as $key => $val)
 		{
+			if(is_object($val) || is_array($val)) continue;
+
 			$args = new stdClass();
 			$args->module_srl = $module_srl;
 			$args->name = trim($key);

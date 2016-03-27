@@ -141,9 +141,8 @@ class documentItem extends Object
 		$oDocumentModel = getModel('document');
 		if($load_extra_vars)
 		{
-			$oDocumentModel->getDocumentExtraVarsFromDB($this->document_srl);
-			$this->add('title', $this->get('title'));
-			$this->add('content', $this->get('content'));
+			$GLOBALS['XE_DOCUMENT_LIST'][$attribute->document_srl] = $this;
+			$oDocumentModel->setToAllDocumentExtraVars();
 		}
 		$GLOBALS['XE_DOCUMENT_LIST'][$this->document_srl] = $this;
 	}
@@ -524,19 +523,19 @@ class documentItem extends Object
 
 	function getSummary($str_size = 50, $tail = '...')
 	{
-		$content = $this->getContent(false,false);
+		$content = $this->getContent(FALSE, FALSE);
 
 		// For a newlink, inert a whitespace
 		$content = preg_replace('!(<br[\s]*/{0,1}>[\s]*)+!is', ' ', $content);
 
 		// Replace tags such as </p> , </div> , </li> and others to a whitespace
-		$content = str_replace(array('</p>', '</div>', '</li>'), ' ', $content);
+		$content = str_replace(array('</p>', '</div>', '</li>', '-->'), ' ', $content);
 
 		// Remove Tags
-		$content = preg_replace('!<([^>]*?)>!is','', $content);
+		$content = preg_replace('!<([^>]*?)>!is', '', $content);
 
 		// Replace < , >, "
-		$content = str_replace(array('&lt;','&gt;','&quot;','&nbsp;'), array('<','>','"',' '), $content);
+		$content = str_replace(array('&lt;', '&gt;', '&quot;', '&nbsp;'), array('<', '>', '"', ' '), $content);
 
 		// Delete  a series of whitespaces
 		$content = preg_replace('/ ( +)/is', ' ', $content);
@@ -545,7 +544,7 @@ class documentItem extends Object
 		$content = trim(cut_str($content, $str_size, $tail));
 
 		// Replace back < , <, "
-		$content = str_replace(array('<','>','"'),array('&lt;','&gt;','&quot;'), $content);
+		$content = str_replace(array('<', '>', '"'),array('&lt;', '&gt;', '&quot;'), $content);
 
 		return $content;
 	}

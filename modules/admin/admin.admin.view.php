@@ -172,13 +172,11 @@ class adminAdminView extends admin
 
 			foreach($parentMenu['list'] as $childKey => $childMenu)
 			{
-				if($subMenuTitle == $childMenu['text'])
+				if($subMenuTitle == $childMenu['text'] && $parentSrl == 0)
 				{
 					$parentSrl = $childMenu['parent_srl'];
-					break;
 				}
 			}
-			if($parentSrl) break;
 		}
 
 		// Admin logo, title setup
@@ -275,7 +273,6 @@ class adminAdminView extends admin
 		$oDocumentModel = getModel('document');
 		$columnList = array('document_srl', 'module_srl', 'category_srl', 'title', 'nick_name', 'member_srl');
 		$args->list_count = 5;
-		;
 		$output = $oDocumentModel->getDocumentList($args, FALSE, FALSE, $columnList);
 		Context::set('latestDocumentList', $output->data);
 		unset($args, $output, $columnList);
@@ -350,11 +347,26 @@ class adminAdminView extends admin
 			}
 		}
 
+		$site_module_info = Context::get('site_module_info');
+		$oAddonAdminModel = getAdminModel('addon');
+		$counterAddonActivated = $oAddonAdminModel->isActivatedAddon('counter', $site_module_info->site_srl );
+		if(!$counterAddonActivated)
+		{
+			$columnList = array('member_srl', 'nick_name', 'user_name', 'user_id', 'email_address');
+			$args = new stdClass;
+			$args->page = 1;
+			$args->list_count = 5;
+			$output = executeQuery('member.getMemberList', $args, $columnList);
+			Context::set('latestMemberList', $output->data);
+			unset($args, $output, $columnList);
+		}
+
 		Context::set('module_list', $module_list);
 		Context::set('needUpdate', $isUpdated);
 		Context::set('addTables', $addTables);
 		Context::set('needUpdate', $needUpdate);
 		Context::set('newVersionList', $needUpdateList);
+		Context::set('counterAddonActivated', $counterAddonActivated);
 
 		$oSecurity = new Security();
 		$oSecurity->encodeHTML('module_list..', 'module_list..author..', 'newVersionList..');
@@ -368,6 +380,16 @@ class adminAdminView extends admin
 			$isEnviromentGatheringAgreement = TRUE;
 		}
 		Context::set('isEnviromentGatheringAgreement', $isEnviromentGatheringAgreement);
+
+		// license agreement check
+		$isLicenseAgreement = FALSE;
+		$path = FileHandler::getRealPath('./files/env/license_agreement');
+		$isLicenseAgreement = FALSE;
+		if(file_exists($path))
+		{
+			$isLicenseAgreement = TRUE;
+		}
+		Context::set('isLicenseAgreement', $isLicenseAgreement);
 		Context::set('layout', 'none');
 
 		$this->setTemplateFile('index');
@@ -423,7 +445,7 @@ class adminAdminView extends admin
 		$oModuleModel = getModel('module');
 		$config = $oModuleModel->getModuleConfig('module');
 		Context::set('siteTitle', $config->siteTitle);
-		Context::set('htmlFooter', $config->htmlFooter);
+		Context::set('htmlFooter', htmlspecialchars($config->htmlFooter));
 
 		// embed filter
 		require_once(_XE_PATH_ . 'classes/security/EmbedFilter.class.php');
@@ -502,7 +524,6 @@ class adminAdminView extends admin
 			$img = sprintf('<img src="%s" alt="" style="height:0px;width:0px" />', $server . $params);
 			Context::addHtmlFooter($img);
 
-			FileHandler::removeDir($path);
 			FileHandler::writeFile($path . $mainVersion, '1');
 		}
 		else if(isset($_SESSION['enviroment_gather']) && !file_exists(FileHandler::getRealPath($path . $mainVersion)))
@@ -515,7 +536,6 @@ class adminAdminView extends admin
 				Context::addHtmlFooter($img);
 			}
 
-			FileHandler::removeDir($path);
 			FileHandler::writeFile($path . $mainVersion, '1');
 			unset($_SESSION['enviroment_gather']);
 		}
@@ -606,6 +626,7 @@ class adminAdminView extends admin
 		$info['PHP_Core'] = $php_core;
 
 		$str_info = "[XE Server Environment " . date("Y-m-d") . "]\n\n";
+		$str_info .= "realpath : ".realpath('./')."\n";
 		foreach( $info as $key=>$value )
 		{
 			if( is_array( $value ) == false ) {

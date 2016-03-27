@@ -509,6 +509,12 @@
 		<value xml:lang="tr"><![CDATA[Geçici Zaman Sınırı]]></value>
 		<value xml:lang="vi"><![CDATA[Hạn sử dụng]]></value>
 	</item>
+	<item name="limit_day_description">
+		<value xml:lang="ko"><![CDATA[임시 제한 일자 설명]]></value>
+		<value xml:lang="en"><![CDATA[Description for Temporary Limit Date]]></value>
+		<value xml:lang="jp"><![CDATA[一時的な期限日の説明]]></value>
+	</item>
+
 	<item name="limit_date">
 		<value xml:lang="ko"><![CDATA[제한일]]></value>
 		<value xml:lang="en"><![CDATA[Limit Date]]></value>
@@ -843,6 +849,20 @@
 			<value xml:lang="es"><![CDATA[최근로그인일시(이하)]]></value>
 			<value xml:lang="tr"><![CDATA[Son Giriş Tarihi (basit)]]></value>
 			<value xml:lang="vi"><![CDATA[Đăng nhập ít nhất]]></value>
+		</item>
+		<item name="birthday">
+			<value xml:lang="ko"><![CDATA[생일]]></value>
+			<value xml:lang="en"><![CDATA[Birthday]]></value>
+			<value xml:lang="jp"><![CDATA[誕生日]]></value>
+			<value xml:lang="zh-CN"><![CDATA[生日]]></value>
+			<value xml:lang="zh-TW"><![CDATA[生日]]></value>
+			<value xml:lang="fr"><![CDATA[Anniversaire]]></value>
+			<value xml:lang="de"><![CDATA[Geburtstag]]></value>
+			<value xml:lang="ru"><![CDATA[Дата рождения]]></value>
+			<value xml:lang="es"><![CDATA[Fecha de Nacimiento]]></value>
+			<value xml:lang="tr"><![CDATA[Doğum günü]]></value>
+			<value xml:lang="vi"><![CDATA[Sinh nhật]]></value>
+			<value xml:lang="mn"><![CDATA[Төрсөн өдөр]]></value>
 		</item>
 		<item name="extra_vars">
 			<value xml:lang="ko"><![CDATA[사용자 정의]]></value>
@@ -1318,6 +1338,9 @@
 		<value xml:lang="ru"><![CDATA[Письмо для авторизации отправлено для %s. Пожалуйста, проверьте Вашу почту]]></value>
 		<value xml:lang="tr"><![CDATA[%s adresine etkinleştirme maili gönderdik. Lütfen mailinizi kontrol ediniz.]]></value>
 		<value xml:lang="vi"><![CDATA[Chúng tôi đã gửi Email xác nhận đến %s. Xin vui lòng bấm vào Link đi kèm trong Email để hoàn tất việc đăng kí!]]></value>
+	</item>
+	<item name="msg_change_mail_sent">
+		<value xml:lang="ko"><![CDATA[%s 메일로 이메일 변경 인증 메일이 발송되었습니다. 메일을 확인하세요.]]></value>
 	</item>
 	<item name="msg_invalid_modify_email_auth_key">
 		<value xml:lang="ko"><![CDATA[잘못된 이메일 변경 요청입니다.<br />이메일 변경요청을 다시 하거나 사이트 관리자에게 문의해주세요.]]></value>
@@ -2334,6 +2357,10 @@
 		<value xml:lang="zh-TW"><![CDATA[可設定密碼更新週期，將會定期通知更換密碼。 (設為零則不使用)]]></value>
 		<value xml:lang="zh-CN"><![CDATA[可设定密码更新周期，将会定期通知更换密码。 (设为零则不适用)]]></value>
 		<value xml:lang="tr"><![CDATA[Eğer buna bir değer biçerseniz, şifrenizi belirli aralıklarla değiştirmeniz konusunda bildirim alacaksanız (eğer 0 olarak ayarlandıysa, devredışıdır)]]></value>
+	</item>
+	<item name="msg_change_password_date">
+		<value xml:lang="ko"><![CDATA[%s일 동안 비밀번호를 변경하지 않았습니다. 개인정보 보호를 위하여 비밀번호를 변경해야 합니다.]]></value>
+		<value xml:lang="en"><![CDATA[You have not changed the password during %s days. For personal information protection, you need to change the password.]]></value>
 	</item>
 	<item name="login_trial_limit1">
 		<value xml:lang="ko"><![CDATA[로그인 시도 횟수 제한 횟수]]></value>
