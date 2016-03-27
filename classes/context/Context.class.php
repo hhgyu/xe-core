@@ -200,6 +200,18 @@ class Context
 	 */
 	function init()
 	{
+		// fix missing HTTP_RAW_POST_DATA in PHP 5.6 and above
+		if(!isset($GLOBALS['HTTP_RAW_POST_DATA']) && version_compare(PHP_VERSION, '5.6.0', '>=') === TRUE)
+		{
+			$GLOBALS['HTTP_RAW_POST_DATA'] = file_get_contents("php://input");
+			
+			// If content is not XML JSON, unset
+			if(!preg_match('/^[\<\{\[]/', $GLOBALS['HTTP_RAW_POST_DATA']) && strpos($_SERVER['CONTENT_TYPE'], 'json') === FALSE && strpos($_SERVER['HTTP_CONTENT_TYPE'], 'json') === FALSE)
+			{
+				unset($GLOBALS['HTTP_RAW_POST_DATA']);
+			}
+		}
+
 		// set context variables in $GLOBALS (to use in display handler)
 		$this->context = &$GLOBALS['__Context__'];
 		$this->context->lang = &$GLOBALS['lang'];
@@ -367,6 +379,8 @@ class Context
 		$this->allow_rewrite = ($this->db_info->use_rewrite == 'Y' ? TRUE : FALSE);
 
 		// set locations for javascript use
+		$url = array();
+		$current_url = self::getRequestUri();
 		if($_SERVER['REQUEST_METHOD'] == 'GET')
 		{
 			if($this->get_vars)
@@ -386,18 +400,32 @@ class Context
 						$url[] = $key . '=' . urlencode($val);
 					}
 				}
-				$this->set('current_url', self::getRequestUri() . '?' . join('&', $url));
+
+				$current_url = self::getRequestUri();
+				if($url) $current_url .= '?' . join('&', $url);
 			}
 			else
 			{
-				$this->set('current_url', $this->getUrl());
+				$current_url = $this->getUrl();
 			}
 		}
 		else
 		{
-			$this->set('current_url', self::getRequestUri());
+			$current_url = self::getRequestUri();
 		}
+
+		$this->set('current_url', $current_url);
 		$this->set('request_uri', self::getRequestUri());
+
+		if(strpos($current_url, 'xn--') !== FALSE)
+		{
+			$this->set('current_url', self::decodeIdna($current_url));
+		}
+
+		if(strpos(self::getRequestUri(), 'xn--') !== FALSE)
+		{
+			$this->set('request_uri', self::decodeIdna(self::getRequestUri()));
+		}
 	}
 
 	/**
@@ -646,9 +674,21 @@ class Context
 			{
 				$url = base64_decode(self::get('default_url'));
 				$url_info = parse_url($url);
+
+				$oModuleModel = getModel('module');
+				$target_domain = (stripos($url, $default_url) !== 0) ? $url_info['host'] : $default_url;
+				$site_info = $oModuleModel->getSiteInfoByDomain($target_domain);
+				if(!$site_info->site_srl) {
+					$oModuleObject = new ModuleObject();
+					$oModuleObject->stop('msg_invalid_request');
+
+					return false;
+				}
+
 				$url_info['query'].= ($url_info['query'] ? '&' : '') . 'SSOID=' . session_id();
 				$redirect_url = sprintf('%s://%s%s%s?%s', $url_info['scheme'], $url_info['host'], $url_info['port'] ? ':' . $url_info['port'] : '', $url_info['path'], $url_info['query']);
 				header('location:' . $redirect_url);
+
 				return FALSE;
 			}
 			// for sites requesting SSO validation
@@ -1069,6 +1109,18 @@ class Context
 		return $obj->str;
 	}
 
+	function decodeIdna($domain)
+	{
+		if(strpos($domain, 'xn--') !== FALSE)
+		{
+			require_once(_XE_PATH_ . 'libs/idna_convert/idna_convert.class.php');
+			$IDN = new idna_convert(array('idn_version' => 2008));
+			$domain = $IDN->decode($domain);
+		}
+
+		return $domain;
+	}
+
 	/**
 	 * Force to set response method
 	 *
@@ -1116,7 +1168,7 @@ class Context
 		$self->js_callback_func = $self->getJSCallbackFunc();
 
 		($type && $self->request_method = $type) or
-				(strpos($_SERVER['CONTENT_TYPE'], 'json') && $self->request_method = 'JSON') or
+				((strpos($_SERVER['CONTENT_TYPE'], 'json') || strpos($_SERVER['HTTP_CONTENT_TYPE'], 'json')) && $self->request_method = 'JSON') or
 				($GLOBALS['HTTP_RAW_POST_DATA'] && $self->request_method = 'XMLRPC') or
 				($self->js_callback_func && $self->request_method = 'JS_CALLBACK') or
 				($self->request_method = $_SERVER['REQUEST_METHOD']);
@@ -1139,7 +1191,7 @@ class Context
 	}
 
 	/**
-	 * handle request areguments for GET/POST
+	 * handle request arguments for GET/POST
 	 *
 	 * @return void
 	 */
@@ -1157,6 +1209,7 @@ class Context
 			{
 				continue;
 			}
+			$key = htmlentities($key);
 			$val = $this->_filterRequestVar($key, $val);
 
 			if($requestMethod == 'GET' && isset($_GET[$key]))
@@ -1240,8 +1293,15 @@ class Context
 			return;
 		}
 
+		$xml = $GLOBALS['HTTP_RAW_POST_DATA'];
+		if(Security::detectingXEE($xml))
+		{
+			header("HTTP/1.0 400 Bad Request");
+			exit;
+		}
+
 		$oXml = new XmlParser();
-		$xml_obj = $oXml->parse();
+		$xml_obj = $oXml->parse($xml);
 
 		$params = $xml_obj->methodcall->params;
 		unset($params->node_name, $params->attrs, $params->body);
@@ -1277,16 +1337,11 @@ class Context
 			return $stack;
 		}
 
-		$body = $this->_filterRequestVar($key, trim($val->body ? $val->body : ''), 0);
-		if($body)
-		{
-			return $body;
-		}
-
+		$body = $val->body;
 		unset($val->node_name, $val->attrs, $val->body);
 		if(!count(get_object_vars($val)))
 		{
-			return NULL;
+			return $this->_filterRequestVar($key, $body, 0);
 		}
 
 		$stack = new stdClass();
@@ -1349,7 +1404,7 @@ class Context
 			{
 				$result[$k] = $v;
 
-				if($do_stripslashes && version_compare(PHP_VERSION, '5.9.0', '<') && get_magic_quotes_gpc())
+				if($do_stripslashes && version_compare(PHP_VERSION, '5.4.0', '<') && get_magic_quotes_gpc())
 				{
 					$result[$k] = stripslashes($result[$k]);
 				}
@@ -1382,7 +1437,7 @@ class Context
 	 */
 	function _setUploadedArgument()
 	{
-		if($_SERVER['REQUEST_METHOD'] != 'POST' || !$_FILES || stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') === FALSE)
+		if($_SERVER['REQUEST_METHOD'] != 'POST' || !$_FILES || (stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') === FALSE && stripos($_SERVER['HTTP_CONTENT_TYPE'], 'multipart/form-data') === FALSE))
 		{
 			return;
 		}
@@ -1623,6 +1678,7 @@ class Context
 					'document_srl.mid' => "$mid/$srl",
 					'document_srl.vid' => "$vid/$srl",
 					'document_srl.mid.vid' => "$vid/$mid/$srl",
+					'act' => ($is_feed && $act !== 'api') ? $act : '',
 					'act.mid' => $is_feed ? "$mid/$act" : '',
 					'act.mid.vid' => $is_feed ? "$vid/$mid/$act" : '',
 					'act.document_srl.key' => ($act == 'trackback') ? "$srl/$key/$act" : '',
@@ -1667,7 +1723,7 @@ class Context
 		}
 		elseif($_use_ssl == 'optional')
 		{
-			$ssl_mode = (($self->get('module') == 'admin') || ($get_vars['act'] && $self->isExistsSSLAction($get_vars['act']))) ? ENFORCE_SSL : RELEASE_SSL;
+			$ssl_mode = (($self->get('module') === 'admin') || ($get_vars['module'] === 'admin') || (isset($get_vars['act']) && $self->isExistsSSLAction($get_vars['act']))) ? ENFORCE_SSL : RELEASE_SSL;
 			$query = $self->getRequestUri($ssl_mode, $domain) . $query;
 			// no SSL
 		}

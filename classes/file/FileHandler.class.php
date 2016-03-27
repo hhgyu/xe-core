@@ -527,7 +527,6 @@ class FileHandler
 			{
 				$oRequest = new HTTP_Request(__PROXY_SERVER__);
 				$oRequest->setMethod('POST');
-				$oRequest->_timeout = $timeout;
 				$oRequest->addPostData('arg', serialize(array('Destination' => $url, 'method' => $method, 'body' => $body, 'content_type' => $content_type, "headers" => $headers, "post_data" => $post_data)));
 			}
 			else
@@ -570,7 +569,14 @@ class FileHandler
 				$oRequest->setMethod($method);
 				if($body)
 					$oRequest->setBody($body);
-
+			}
+			
+			if(method_exists($oRequest, 'setConfig'))
+			{
+				$oRequest->setConfig('timeout', $timeout);
+			}
+			elseif(property_exists($oRequest, '_timeout'))
+			{
 				$oRequest->_timeout = $timeout;
 			}
 
@@ -635,21 +641,17 @@ class FileHandler
 	 */
 	function returnBytes($val)
 	{
-		$last = strtolower(substr(trim($val), -1));
-		switch ($last)
+		$unit = strtoupper(substr($val, -1));
+		$val = (float)$val;
+
+		switch ($unit)
 		{
-			case 'g':
-				$val *= 1024 * 1024 * 1024;
-				break;
-			case 'm':
-				$val *= 1024 * 1024;
-				break;
-			case 'k':
-				$val *= 1024;
-				break;
+			case 'G': $val *= 1024;
+			case 'M': $val *= 1024;
+			case 'K': $val *= 1024;
 		}
 
-		return $val;
+		return round($val);
 	}
 
 	/**
