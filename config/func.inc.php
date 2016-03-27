@@ -472,6 +472,18 @@ function getFullSiteUrl()
 }
 
 /**
+ * Return the exact url of the current page
+ *
+ * @return string
+ */
+function getCurrentPageUrl()
+{
+	$protocol = $_SERVER['HTTPS'] == 'on' ? 'https://' : 'http://';
+	$url = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+	return htmlspecialchars($url, ENT_COMPAT, 'UTF-8', FALSE);
+}
+
+/**
  * Return if domain of the virtual site is url type or id type
  *
  * @param string $domain
@@ -714,9 +726,40 @@ function zdate($str, $format = 'Y-m-d H:i:s', $conversion = TRUE)
 		}
 	}
 
-	$date = new DateTime($str);
-	$string = $date->format($format);
+	// If year value is less than 1970, handle it separately.
+	if((int) substr($str, 0, 4) < 1970)
+	{
+		$hour = (int) substr($str, 8, 2);
+		$min = (int) substr($str, 10, 2);
+		$sec = (int) substr($str, 12, 2);
+		$year = (int) substr($str, 0, 4);
+		$month = (int) substr($str, 4, 2);
+		$day = (int) substr($str, 6, 2);
 
+		$trans = array(
+			'Y' => $year,
+			'y' => sprintf('%02d', $year % 100),
+			'm' => sprintf('%02d', $month),
+			'n' => $month,
+			'd' => sprintf('%02d', $day),
+			'j' => $day,
+			'G' => $hour,
+			'H' => sprintf('%02d', $hour),
+			'g' => $hour % 12,
+			'h' => sprintf('%02d', $hour % 12),
+			'i' => sprintf('%02d', $min),
+			's' => sprintf('%02d', $sec),
+			'M' => getMonthName($month),
+			'F' => getMonthName($month, FALSE)
+		);
+
+		$string = strtr($format, $trans);
+	}
+	else
+	{
+		// if year value is greater than 1970, get unixtime by using ztime() for date() function's argument. 
+		$string = date($format, ztime($str));
+	}
 	// change day and am/pm for each language
 	$unit_week = Context::getLang('unit_week');
 	$unit_meridiem = Context::getLang('unit_meridiem');
@@ -1067,8 +1110,22 @@ function removeHackTag($content)
 	 */
 	$content = preg_replace_callback('@<(/?)([a-z]+[0-9]?)((?>"[^"]*"|\'[^\']*\'|[^>])*?\b(?:on[a-z]+|data|style|background|href|(?:dyn|low)?src)\s*=[\s\S]*?)(/?)($|>|<)@i', 'removeSrcHack', $content);
 
-	// xmp tag ?뺤씤 �??�붽?
 	$content = checkXmpTag($content);
+	$content = blockWidgetCode($content);
+
+	return $content;
+}
+
+/**
+ * blocking widget code
+ *
+ * @param string $content Taget content
+ * @return string
+ **/
+function blockWidgetCode($content)
+{
+	$content = preg_replace('/(<(?:img|div)(?:[^>]*))(widget)(?:(=([^>]*?)>))/is', '$1blocked-widget$3', $content);
+
 	return $content;
 }
 
@@ -1143,7 +1200,7 @@ function removeSrcHack($match)
 				continue;
 			}
 
-			$val = preg_replace('/&#(?:x([a-fA-F0-9]+)|0*(\d+));/e', 'chr("\\1"?0x00\\1:\\2+0)', $m[3][$idx] . $m[4][$idx]);
+			$val = preg_replace_callback('/&#(?:x([a-fA-F0-9]+)|0*(\d+));/', function($n) {return chr($n[1] ? ('0x00' . $n[1]) : ($n[2] + 0)); }, $m[3][$idx] . $m[4][$idx]);
 			$val = preg_replace('/^\s+|[\t\n\r]+/', '', $val);
 
 			if(preg_match('/^[a-z]+script:/i', $val))
@@ -1152,6 +1209,24 @@ function removeSrcHack($match)
 			}
 
 			$attrs[$name] = $val;
+		}
+	}
+
+	$filter_arrts = array('style', 'src', 'href');
+
+	if($tag === 'object') array_push($filter_arrts, 'data');
+	if($tag === 'param') array_push($filter_arrts, 'value');
+
+	foreach($filter_arrts as $attr)
+	{
+		if(!isset($attrs[$attr])) continue;
+
+		$attr_value = rawurldecode($attrs[$attr]);
+		$attr_value = htmlspecialchars_decode($attr_value, ENT_COMPAT);
+		$attr_value = preg_replace('/\s+|[\t\n\r]+/', '', $attr_value);
+		if(preg_match('@(\?|&|;)(act=)@i', $attr_value))
+		{
+			unset($attrs[$attr]);
 		}
 	}
 
@@ -1439,9 +1514,9 @@ function isCrawler($agent = NULL)
 		$agent = $_SERVER['HTTP_USER_AGENT'];
 	}
 
-	$check_agent = array('bot', 'spider', 'google', 'yahoo', 'daum', 'teoma', 'fish', 'hanrss', 'facebook');
+	$check_agent = array('bot', 'spider', 'spyder', 'crawl', 'http://', 'google', 'yahoo', 'slurp', 'yeti', 'daum', 'teoma', 'fish', 'hanrss', 'facebook', 'yandex', 'infoseek', 'askjeeves', 'stackrambler');
 	$check_ip = array(
-		'211.245.21.110-211.245.21.119' /* mixsh */
+		/*'211.245.21.110-211.245.21.119' mixsh is closed */
 	);
 
 	foreach($check_agent as $str)
@@ -1501,11 +1576,11 @@ function requirePear()
 {
 	if(version_compare(PHP_VERSION, "5.3.0") < 0)
 	{
-		set_include_path(_XE_PATH_ . "libs/PEAR");
+		set_include_path(_XE_PATH_ . "libs/PEAR" . PATH_SEPARATOR . get_include_path());
 	}
 	else
 	{
-		set_include_path(_XE_PATH_ . "libs/PEAR.1.9.5");
+		set_include_path(_XE_PATH_ . "libs/PEAR.1.9.5" . PATH_SEPARATOR . get_include_path());
 	}
 }
 
@@ -1516,15 +1591,25 @@ function checkCSRF()
 		return FALSE;
 	}
 
-	$defaultUrl = Context::getDefaultUrl();
-	$referer = parse_url($_SERVER["HTTP_REFERER"]);
+	$default_url = Context::getDefaultUrl();
+	$referer = $_SERVER["HTTP_REFERER"];
+
+	if(strpos($default_url, 'xn--') !== FALSE && strpos($referer, 'xn--') === FALSE)
+	{
+		require_once(_XE_PATH_ . 'libs/idna_convert/idna_convert.class.php');
+		$IDN = new idna_convert(array('idn_version' => 2008));
+		$referer = $IDN->encode($referer);
+	}
+
+	$default_url = parse_url($default_url);
+	$referer = parse_url($referer);
 
 	$oModuleModel = getModel('module');
 	$siteModuleInfo = $oModuleModel->getDefaultMid();
 
 	if($siteModuleInfo->site_srl == 0)
 	{
-		if(!strstr(strtolower($defaultUrl), strtolower($referer['host'])))
+		if($default_url['host'] !== $referer['host'])
 		{
 			return FALSE;
 		}

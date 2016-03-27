@@ -129,8 +129,10 @@ class memberAdminView extends member
 	 */
 	public function dispMemberAdminConfig()
 	{
+		$oPassword = new Password();
+		Context::set('password_hashing_algos', $oPassword->getSupportedAlgorithms());
+		
 		$this->setTemplateFile('default_config');
-
 	}
 
 	public function dispMemberAdminSignUpConfig()
@@ -613,7 +615,7 @@ class memberAdminView extends member
 					}
 
 					$replace = array_merge($extentionReplace, $replace);
-					$inputTag = preg_replace('@%(\w+)%@e', '$replace[$1]', $template);
+					$inputTag = preg_replace_callback('@%(\w+)%@', function($n) use($replace) { return $replace[$n[1]]; }, $template);
 
 					if($extendForm->description)
 						$inputTag .= '<p class="help-block">'.$extendForm->description.'</p>';
